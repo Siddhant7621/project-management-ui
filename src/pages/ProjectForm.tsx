@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 interface ProjectFormData {
   title: string;
-  description: string;
+  description?: string;
   status: 'active' | 'completed';
 }
 
@@ -23,7 +23,7 @@ const ProjectForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(Boolean(id));
+  const [isEditing] = useState(Boolean(id));
 
   const {
     register,

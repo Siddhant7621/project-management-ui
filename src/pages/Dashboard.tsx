@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
 import type { Project } from "../types";
 import toast from "react-hot-toast";
-import Navbar from "../components/Navbar";
 
 const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -30,18 +29,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteProject = async (projectId: string) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      try {
-        await api.delete(`/projects/${projectId}`);
-        setProjects(projects.filter((project) => project._id !== projectId));
-        toast.success("Project deleted successfully!");
-      } catch (error) {
-        console.error("Error deleting project:", error);
-      }
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen text-gray-700">
@@ -54,63 +41,89 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
       <nav className="bg-white shadow-md fixed w-full z-10">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="flex justify-between h-16 items-center">
-      {/* Logo */}
-      <h1 className="text-2xl font-bold text-indigo-600">TaskFlow</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            {/* Logo */}
+            <h1 className="text-2xl font-bold text-indigo-600">TaskFlow</h1>
 
-      {/* Desktop Menu */}
-      <div className="hidden sm:flex items-center space-x-4">
-        <span className="text-gray-700 font-medium">Hello, {user?.name}</span>
-        <button
-          onClick={logout}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-        >
-          Logout
-        </button>
-      </div>
+            {/* Desktop Menu */}
+            <div className="hidden sm:flex items-center space-x-4">
+              <span className="text-gray-700 font-medium">
+                Hello, {user?.name}
+              </span>
+              <button
+                onClick={logout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                Logout
+              </button>
+            </div>
 
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMenuOpen((prev) => !prev)}
-        className="sm:hidden text-gray-700 hover:text-indigo-600 transition"
-      >
-        {menuOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="sm:hidden text-gray-700 hover:text-indigo-600 transition"
+            >
+              {menuOpen ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown */}
+        {menuOpen && (
+          <div className="sm:hidden bg-white shadow-md border-t border-gray-200">
+            <div className="flex flex-col px-4 py-3 space-y-3">
+              <span className="text-gray-700 font-medium">
+                Hello, {user?.name}
+              </span>
+              <button
+                onClick={logout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         )}
-      </button>
-    </div>
-  </div>
-
-  {/* Mobile Dropdown */}
-  {menuOpen && (
-    <div className="sm:hidden bg-white shadow-md border-t border-gray-200">
-      <div className="flex flex-col px-4 py-3 space-y-3">
-        <span className="text-gray-700 font-medium">Hello, {user?.name}</span>
-        <button
-          onClick={logout}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
-  )}
-</nav>
+      </nav>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8 pt-20">
         {/* Header & New Project Button */}
         <div className="flex justify-between items-center mb-8 px-3 sm:px-0">
-          <h2 className="sm:text-3xl text-2xl font-bold text-gray-900">My Projects</h2>
+          <h2 className="sm:text-3xl text-2xl font-bold text-gray-900">
+            My Projects
+          </h2>
           <Link
             to="/projects/new"
             className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition shadow-md"
