@@ -18,12 +18,15 @@ const TaskForm: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const isEditing = Boolean(id);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<TaskFormData>({
     defaultValues: {
@@ -35,38 +38,65 @@ const TaskForm: React.FC = () => {
     },
   });
 
+  // Watch the project field to get current value
+  const selectedProjectId = watch("project");
+
   useEffect(() => {
     fetchProjects();
-    if (isEditing && id && projectId) {
+
+    // If we have a projectId from URL, set it and fetch project details
+    if (projectId) {
+      setValue("project", projectId);
+      fetchProjectDetails(projectId);
+    }
+
+    if (isEditing && id) {
       fetchTask();
     }
-  }, [id, isEditing, projectId]);
+  }, [id, isEditing, projectId, setValue]);
 
   const fetchProjects = async () => {
     try {
       const response = await api.get("/projects");
       setProjects(response.data);
-    } catch {
-      toast.error("Failed to fetch projects");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to fetch projects");
+    }
+  };
+
+  const fetchProjectDetails = async (projectId: string) => {
+    try {
+      const response = await api.get(`/projects/${projectId}`);
+      setCurrentProject(response.data);
+    } catch (error: any) {
+      console.error("Failed to fetch project details:", error);
     }
   };
 
   const fetchTask = async () => {
     try {
-      const response = await api.get(`/tasks/project/${projectId}`);
-      const task = response.data.find((t: any) => t._id === id);
+      // For editing, we need to get the task details
+      const tasksResponse = await api.get(`/tasks/project/${projectId}`);
+      const task = tasksResponse.data.find((t: any) => t._id === id);
+
       if (task) {
         reset({
           title: task.title,
           description: task.description || "",
           status: task.status,
           dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
-          project:
-            typeof task.project === "string" ? task.project : task.project._id,
+          project: projectId, // Use the projectId from URL for editing
         });
+
+        // Fetch project details for the task's project
+        fetchProjectDetails(projectId);
+      } else {
+        toast.error("Task not found");
+        navigate(`/projects/${projectId}`);
       }
-    } catch {
-      toast.error("Failed to fetch task");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to fetch task");
+      navigate(projectId ? `/projects/${projectId}` : "/dashboard");
     }
   };
 
@@ -80,6 +110,7 @@ const TaskForm: React.FC = () => {
         await api.post("/tasks", data);
         toast.success("Task created successfully!");
       }
+      // Always navigate back to the project we're working with
       navigate(`/projects/${data.project}`);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to save task");
@@ -88,13 +119,26 @@ const TaskForm: React.FC = () => {
     }
   };
 
+  // Show project name if we're creating a task for a specific project
+  const showProjectInfo = projectId && currentProject;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
-          <h1 className="text-3xl font-semibold mb-6 text-gray-800">
-            {isEditing ? "Edit Task" : "Create New Task"}
-          </h1>
+          <div className="mb-6">
+            <h1 className="text-3xl font-semibold text-gray-800">
+              {isEditing ? "Edit Task" : "Create New Task"}
+            </h1>
+            {showProjectInfo && (
+              <p className="text-gray-600 mt-2">
+                for project:{" "}
+                <span className="font-medium text-indigo-600">
+                  {currentProject.title}
+                </span>
+              </p>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Title */}
@@ -154,36 +198,38 @@ const TaskForm: React.FC = () => {
               )}
             </div>
 
-            {/* Project */}
-            <div>
-              <label
-                htmlFor="project"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Project *
-              </label>
-              <select
-                id="project"
-                {...register("project", { required: "Project is required" })}
-                disabled={Boolean(projectId)}
-                className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition
-                  ${errors.project ? "border-red-500" : "border-gray-300"} ${
-                  projectId ? "bg-gray-100" : ""
-                }`}
-              >
-                <option value="">Select a project</option>
-                {projects.map((project) => (
-                  <option key={project._id} value={project._id}>
-                    {project.title}
-                  </option>
-                ))}
-              </select>
-              {errors.project && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.project.message}
-                </p>
-              )}
-            </div>
+            {/* Project Selection - Only show if not creating from a specific project */}
+            {!projectId ? (
+              <div>
+                <label
+                  htmlFor="project"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Project *
+                </label>
+                <select
+                  id="project"
+                  {...register("project", { required: "Project is required" })}
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition
+                    ${errors.project ? "border-red-500" : "border-gray-300"}`}
+                >
+                  <option value="">Select a project</option>
+                  {projects.map((project) => (
+                    <option key={project._id} value={project._id}>
+                      {project.title}
+                    </option>
+                  ))}
+                </select>
+                {errors.project && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.project.message}
+                  </p>
+                )}
+              </div>
+            ) : (
+              // Show hidden field with projectId when it comes from URL
+              <input type="hidden" {...register("project")} />
+            )}
 
             {/* Status */}
             <div>
@@ -231,6 +277,19 @@ const TaskForm: React.FC = () => {
                 </p>
               )}
             </div>
+
+            {/* Project Info Display (when project comes from URL) */}
+            {projectId && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Project:</strong>{" "}
+                  {currentProject?.title || "Loading..."}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  This task will be added to the current project
+                </p>
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="flex justify-end space-x-4 pt-6">
