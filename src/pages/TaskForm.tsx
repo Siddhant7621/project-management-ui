@@ -7,22 +7,16 @@ import api from '../utils/api';
 import type { Project } from '../types';
 import toast from 'react-hot-toast';
 
-interface TaskFormData {
-  title: string;
-  description: string;
-  status: 'todo' | 'in-progress' | 'done';
-  dueDate: string;
-  project: string;
-}
-
-// Validation schema
-const schema = Yup.object().shape({
+// Validation schema with proper typing
+const schema = Yup.object({
   title: Yup.string().required('Title is required').min(3, 'Title must be at least 3 characters'),
-  description: Yup.string().max(500, 'Description cannot exceed 500 characters'),
-  status: Yup.string().oneOf(['todo', 'in-progress', 'done'], 'Invalid status').required(),
+  description: Yup.string().optional().max(500, 'Description cannot exceed 500 characters'),
+  status: Yup.mixed<'todo' | 'in-progress' | 'done'>().oneOf(['todo', 'in-progress', 'done'], 'Invalid status').required('Status is required'),
   project: Yup.string().required('Project is required'),
-  dueDate: Yup.date().nullable().notRequired(),
+  dueDate: Yup.string().optional(),
 });
+
+type FormData = Yup.InferType<typeof schema>;
 
 const TaskForm: React.FC = () => {
   const { id, projectId } = useParams<{ id: string; projectId: string }>();
@@ -36,7 +30,7 @@ const TaskForm: React.FC = () => {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<TaskFormData>({
+  } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       title: '',
@@ -49,8 +43,10 @@ const TaskForm: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
-    if (isEditing) fetchTask();
-  }, [id]);
+    if (isEditing && id) {
+      fetchTask();
+    }
+  }, [id, isEditing]);
 
   const fetchProjects = async () => {
     try {
@@ -68,10 +64,10 @@ const TaskForm: React.FC = () => {
       if (task) {
         reset({
           title: task.title,
-          description: task.description,
+          description: task.description || '',
           status: task.status,
           dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
-          project: task.project,
+          project: typeof task.project === 'string' ? task.project : task.project._id,
         });
       }
     } catch {
@@ -79,10 +75,10 @@ const TaskForm: React.FC = () => {
     }
   };
 
-  const onSubmit = async (data: TaskFormData) => {
+  const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      if (isEditing) {
+      if (isEditing && id) {
         await api.put(`/tasks/${id}`, data);
         toast.success('Task updated successfully!');
       } else {

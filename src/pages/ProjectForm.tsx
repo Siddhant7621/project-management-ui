@@ -12,18 +12,18 @@ interface ProjectFormData {
   status: 'active' | 'completed';
 }
 
-// Validation schema
-const schema = Yup.object().shape({
+// Validation schema with proper typing
+const schema = Yup.object({
   title: Yup.string().required('Title is required').min(3, 'Title must be at least 3 characters'),
-  description: Yup.string().max(500, 'Description cannot exceed 500 characters'),
-  status: Yup.string().oneOf(['active', 'completed'], 'Invalid status').required(),
+  description: Yup.string().optional().max(500, 'Description cannot exceed 500 characters'),
+  status: Yup.mixed<'active' | 'completed'>().oneOf(['active', 'completed'], 'Invalid status').required('Status is required'),
 });
 
 const ProjectForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isEditing] = useState(Boolean(id));
+  const isEditing = Boolean(id);
 
   const {
     register,
@@ -31,7 +31,7 @@ const ProjectForm: React.FC = () => {
     reset,
     formState: { errors },
   } = useForm<ProjectFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       title: '',
       description: '',
@@ -40,13 +40,15 @@ const ProjectForm: React.FC = () => {
   });
 
   useEffect(() => {
-    if (isEditing) fetchProject();
-  }, [id]);
+    if (isEditing && id) {
+      fetchProject();
+    }
+  }, [id, isEditing]);
 
   const fetchProject = async () => {
     try {
       const response = await api.get(`/projects/${id}`);
-      reset(response.data); // populate form with existing data
+      reset(response.data);
     } catch (error) {
       toast.error('Failed to fetch project details');
     }
@@ -55,7 +57,7 @@ const ProjectForm: React.FC = () => {
   const onSubmit = async (data: ProjectFormData) => {
     setLoading(true);
     try {
-      if (isEditing) {
+      if (isEditing && id) {
         await api.put(`/projects/${id}`, data);
         toast.success('Project updated successfully!');
       } else {
