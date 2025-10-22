@@ -26,7 +26,6 @@ const TaskForm: React.FC = () => {
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<TaskFormData>({
     defaultValues: {
@@ -38,19 +37,16 @@ const TaskForm: React.FC = () => {
     },
   });
 
-  // Watch the project field to get current value
-  const selectedProjectId = watch("project");
-
   useEffect(() => {
     fetchProjects();
-
+    
     // If we have a projectId from URL, set it and fetch project details
     if (projectId) {
       setValue("project", projectId);
       fetchProjectDetails(projectId);
     }
 
-    if (isEditing && id) {
+    if (isEditing && id && projectId) {
       fetchTask();
     }
   }, [id, isEditing, projectId, setValue]);
@@ -76,9 +72,11 @@ const TaskForm: React.FC = () => {
   const fetchTask = async () => {
     try {
       // For editing, we need to get the task details
+      if (!projectId) return;
+      
       const tasksResponse = await api.get(`/tasks/project/${projectId}`);
       const task = tasksResponse.data.find((t: any) => t._id === id);
-
+      
       if (task) {
         reset({
           title: task.title,
@@ -87,7 +85,7 @@ const TaskForm: React.FC = () => {
           dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
           project: projectId, // Use the projectId from URL for editing
         });
-
+        
         // Fetch project details for the task's project
         fetchProjectDetails(projectId);
       } else {
@@ -132,10 +130,7 @@ const TaskForm: React.FC = () => {
             </h1>
             {showProjectInfo && (
               <p className="text-gray-600 mt-2">
-                for project:{" "}
-                <span className="font-medium text-indigo-600">
-                  {currentProject.title}
-                </span>
+                for project: <span className="font-medium text-indigo-600">{currentProject.title}</span>
               </p>
             )}
           </div>
@@ -282,8 +277,7 @@ const TaskForm: React.FC = () => {
             {projectId && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Project:</strong>{" "}
-                  {currentProject?.title || "Loading..."}
+                  <strong>Project:</strong> {currentProject?.title || "Loading..."}
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
                   This task will be added to the current project
